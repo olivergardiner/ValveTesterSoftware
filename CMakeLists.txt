@@ -15,8 +15,8 @@ qt_add_executable(ValveTester
 
 target_link_libraries(ValveTester
     PRIVATE
-        Qt::Core
-        Qt::Widgets
+        Qt6::Core
+        Qt6::Widgets
 )
 
 install(TARGETS ValveTester

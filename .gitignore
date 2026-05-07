@@ -1,84 +1,87 @@
-# This file is used to ignore files which are generated
-# ----------------------------------------------------------------------------
+# Build output directories
+/build*/
+/out/
 
-*~
-*.autosave
-*.a
-*.core
-*.moc
-*.o
-*.obj
-*.orig
-*.rej
-*.so
-*.so.*
-*_pch.h.cpp
-*_resource.rc
-*.qm
-.#*
-*.*#
-core
-!core/
-tags
-.DS_Store
-.directory
-*.debug
-Makefile*
-*.prl
-*.app
-moc_*.cpp
-ui_*.h
-qrc_*.cpp
-Thumbs.db
-*.res
-*.rc
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+install_manifest.txt
+CTestTestfile.cmake
+_deps/
+
+# Qt Creator
+*.pro.user
+*.pro.user.*
+*.qbs.user
+*.qbs.user.*
+CMakeLists.txt.user
+CMakeLists.txt.user.*
 /.qmake.cache
 /.qmake.stash
+/.qtcreator/
 **/.qmlls.ini
 
-# qtcreator generated files
-*.pro.user*
-*.qbs.user*
-CMakeLists.txt.user*
-
-# xemacs temporary files
-*.flc
-
-# Vim temporary files
-.*.swp
-
-# Visual Studio generated files
-*.ib_pdb_index
-*.idb
-*.ilk
-*.pdb
-*.sln
-*.suo
-*.vcproj
-*vcproj.*.*.user
-*.ncb
-*.sdf
-*.opensdf
-*.vcxproj
-*vcxproj.*
-
-# MinGW generated files
-*.Debug
-*.Release
-
-# Python byte code
-*.pyc
-
-# Binaries
-# --------
-*.dll
-*.exe
-
-# Directories with generated files
+# Qt generated/intermediate files
+moc_*.cpp
+moc_*.cpp.d
+ui_*.h
+qrc_*.cpp
+*.qm
+*.prl
 .moc/
 .obj/
 .pch/
 .rcc/
 .uic/
-/build*/
-/.qtcreator/
+
+# VS Code
+.vscode/
+
+# Visual Studio / MSVC
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+*.sln
+*.slnx
+*.suo
+*.user
+*.idb
+*.ilk
+*.pdb
+*.ib_pdb_index
+*.ncb
+*.sdf
+*.opensdf
+
+# Compiled object and library files
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.so.*
+*.dylib
+
+# Binaries
+*.exe
+*.dll
+*.app
+
+# Intermediate / temp files
+*~
+*.autosave
+*.orig
+*.rej
+*.bak
+.#*
+*.*#
+.*.swp
+*.flc
+Thumbs.db
+.DS_Store
+.directory
+tags
+
+# Windows NUL device spuriously created when CMake runs CMD commands via bash
+/nul
