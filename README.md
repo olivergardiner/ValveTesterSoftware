@@ -10,4 +10,4 @@ This application is a complement to the Firmware project and enables the PC to c
 
 ### Environment
 
-The project uses QT6 and CMake, and can easily be built with QT Creator or VS Code. You will need to install QT with a QT^ Kit, and if you want to use the MSVC compilers then you will need to install Visual Studio and the Windows SDK (for the debugger).
+The project uses QT6 and CMake, and can easily be built with QT Creator or VS Code. You will need to install QT with a QT6 Kit, and if you want to use the MSVC compilers then you will need to install Visual Studio and the Windows SDK (for the debugger).
