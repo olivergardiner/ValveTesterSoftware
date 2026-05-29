@@ -77,14 +77,16 @@ void SweepRunner::sendNextPoint()
             m_device->setScreen(htCode);   // S3 = HT2 target, tracks HT1 for both sections
     } else {
         // Transfer characteristic: Outer loop: Vg2 (m_currentVg), Inner loop: Vg1
-        const double vg1     = m_params.vgStart + m_anodeIndex * m_params.vgStep;
+        // Transfer characteristic: sweep Vg1 from vgStop (most negative = min current)
+        // toward vgStart, so pMax overload clips the high-current tail rather than the start.
+        const double vg1     = m_params.vgStop - m_anodeIndex * m_params.vgStep;
         const int dacCodeVg1 = Hw::gridVoltageToDacCode(-vg1);
 
         if (m_anodeIndex == 0) {
-            m_device->setHtTarget(Hw::htVoltsToCount(m_params.vaStart));
+            m_device->setHtTarget(Hw::htVoltsToCount(m_params.vaStart));  // Va fixed
             if (m_params.deviceType == "Pentode")
-                m_device->setScreen(Hw::htVoltsToCount(m_currentVg));
-            else
+                m_device->setScreen(Hw::htVoltsToCount(m_currentVg));  // stepped Vg2
+            else if (m_params.deviceType == "Double Triode")
                 m_device->setGrid2(Hw::gridVoltageToDacCode(-m_currentVg));
         }
 
@@ -104,6 +106,7 @@ int SweepRunner::gridSteps() const
         if (m_params.vgStep <= 0.0) return 1;
         return static_cast<int>(std::round((m_params.vgStop - m_params.vgStart) / m_params.vgStep)) + 1;
     } else {
+        // Transfer characteristic outer loop is Vg2 (screen voltage)
         if (m_params.vg2Step <= 0.0) return 1;
         return static_cast<int>(std::round((m_params.vg2Stop - m_params.vg2Start) / m_params.vg2Step)) + 1;
     }
@@ -140,16 +143,22 @@ void SweepRunner::onMeasurementReady(double vaVolts, double iaMa, double ig2Ma)
     if (m_params.sweepType == SweepType::Anode)
         sample.vg1Volts = -m_currentVg;
     else
-        sample.vg1Volts = -(m_params.vgStart + m_anodeIndex * m_params.vgStep);
+        sample.vg1Volts = -(m_params.vgStop - m_anodeIndex * m_params.vgStep);
 
     m_currentSweep.samples.append(sample);
     emit sampleAcquired(m_currentSweep, sample);
 
     // ── Overload protection ───────────────────────────────────────────────────
-    // iaMax is a Y-axis display scale, not a hard current trip — only pMax
-    // (anode dissipation) is used as a true overload limit.
+    // iaMax is a Y-axis display scale only.  pMax is the datasheet rated peak
+    // dissipation.  Because each measurement point is applied for only a few
+    // milliseconds — far shorter than the anode's thermal time constant — the
+    // actual trip threshold is scaled up from the datasheet value.  3× gives
+    // adequate protection against genuine faults (shorts, deep saturation)
+    // while not clipping normal characteristic curves near the rated operating
+    // point.  Commercial curve tracers typically use 3–5×.
+    constexpr double kPMaxScale = 3.0;
     const double powerW  = vaVolts * iaMa / 1000.0;
-    const bool overPower = m_params.pMax > 0.0 && powerW > m_params.pMax;
+    const bool overPower = m_params.pMax > 0.0 && powerW > m_params.pMax * kPMaxScale;
 
     if (overPower) {
         // Store the partial curve that was collected so far
@@ -157,28 +166,21 @@ void SweepRunner::onMeasurementReady(double vaVolts, double iaMa, double ig2Ma)
 
         // Advance outer loop
         ++m_gridIndex;
-        if (m_params.sweepType == SweepType::Anode) {
-            const double nextVg = m_params.vgStart + m_gridIndex * m_params.vgStep;
-            if (nextVg <= m_params.vgStop + 1e-9) {
-                m_anodeIndex           = 0;
-                m_currentVg            = nextVg;
+        if (m_gridIndex < gridSteps()) {
+            m_anodeIndex  = 0;
+            if (m_params.sweepType == SweepType::Anode) {
+                m_currentVg            = m_params.vgStart + m_gridIndex * m_params.vgStep;
                 m_currentSweep         = Sweep{};
                 m_currentSweep.vgVolts  = -m_currentVg;
                 m_currentSweep.vg2Volts = m_params.vg2;
-                sendNextPoint();
-                return;
-            }
-        } else {
-            const double nextVg2 = m_params.vg2Start + m_gridIndex * m_params.vg2Step;
-            if (nextVg2 <= m_params.vg2Stop + 1e-9) {
-                m_anodeIndex           = 0;
-                m_currentVg            = nextVg2;
+            } else {
+                m_currentVg            = m_params.vg2Start + m_gridIndex * m_params.vg2Step;
                 m_currentSweep         = Sweep{};
                 m_currentSweep.vgVolts  = 0.0;
                 m_currentSweep.vg2Volts = m_currentVg;
-                sendNextPoint();
-                return;
             }
+            sendNextPoint();
+            return;
         }
 
         // No more grid steps — measurement is complete
@@ -193,7 +195,7 @@ void SweepRunner::onMeasurementReady(double vaVolts, double iaMa, double ig2Ma)
     ++m_anodeIndex;
     const bool innerContinues = (m_params.sweepType == SweepType::Anode)
         ? (m_params.vaStart + m_anodeIndex * m_params.vaStep <= m_params.vaStop + 1e-9)
-        : (m_params.vgStart + m_anodeIndex * m_params.vgStep <= m_params.vgStop + 1e-9);
+        : (m_anodeIndex < anodeSteps());
 
     if (innerContinues) {
         sendNextPoint();
@@ -205,28 +207,21 @@ void SweepRunner::onMeasurementReady(double vaVolts, double iaMa, double ig2Ma)
 
     // Advance outer loop
     ++m_gridIndex;
-    if (m_params.sweepType == SweepType::Anode) {
-        const double nextVg = m_params.vgStart + m_gridIndex * m_params.vgStep;
-        if (nextVg <= m_params.vgStop + 1e-9) {
-            m_anodeIndex           = 0;
-            m_currentVg            = nextVg;
+    if (m_gridIndex < gridSteps()) {
+        m_anodeIndex  = 0;
+        if (m_params.sweepType == SweepType::Anode) {
+            m_currentVg            = m_params.vgStart + m_gridIndex * m_params.vgStep;
             m_currentSweep         = Sweep{};
             m_currentSweep.vgVolts  = -m_currentVg;
             m_currentSweep.vg2Volts = m_params.vg2;
-            sendNextPoint();
-            return;
-        }
-    } else {
-        const double nextVg2 = m_params.vg2Start + m_gridIndex * m_params.vg2Step;
-        if (nextVg2 <= m_params.vg2Stop + 1e-9) {
-            m_anodeIndex           = 0;
-            m_currentVg            = nextVg2;
+        } else {
+            m_currentVg            = m_params.vg2Start + m_gridIndex * m_params.vg2Step;
             m_currentSweep         = Sweep{};
             m_currentSweep.vgVolts  = 0.0;
             m_currentSweep.vg2Volts = m_currentVg;
-            sendNextPoint();
-            return;
         }
+        sendNextPoint();
+        return;
     }
 
     // All sweeps done
@@ -249,7 +244,7 @@ void SweepRunner::onMeasurementFailed()
     ++m_anodeIndex;
     const bool innerContinues = (m_params.sweepType == SweepType::Anode)
         ? (m_params.vaStart + m_anodeIndex * m_params.vaStep <= m_params.vaStop + 1e-9)
-        : (m_params.vgStart + m_anodeIndex * m_params.vgStep <= m_params.vgStop + 1e-9);
+        : (m_anodeIndex < anodeSteps());
 
     if (innerContinues) {
         sendNextPoint();
@@ -260,28 +255,21 @@ void SweepRunner::onMeasurementFailed()
     m_measurement.sweeps.append(m_currentSweep);
 
     ++m_gridIndex;
-    if (m_params.sweepType == SweepType::Anode) {
-        const double nextVg = m_params.vgStart + m_gridIndex * m_params.vgStep;
-        if (nextVg <= m_params.vgStop + 1e-9) {
-            m_anodeIndex           = 0;
-            m_currentVg            = nextVg;
+    if (m_gridIndex < gridSteps()) {
+        m_anodeIndex  = 0;
+        if (m_params.sweepType == SweepType::Anode) {
+            m_currentVg            = m_params.vgStart + m_gridIndex * m_params.vgStep;
             m_currentSweep         = Sweep{};
             m_currentSweep.vgVolts  = -m_currentVg;
             m_currentSweep.vg2Volts = m_params.vg2;
-            sendNextPoint();
-            return;
-        }
-    } else {
-        const double nextVg2 = m_params.vg2Start + m_gridIndex * m_params.vg2Step;
-        if (nextVg2 <= m_params.vg2Stop + 1e-9) {
-            m_anodeIndex           = 0;
-            m_currentVg            = nextVg2;
+        } else {
+            m_currentVg            = m_params.vg2Start + m_gridIndex * m_params.vg2Step;
             m_currentSweep         = Sweep{};
             m_currentSweep.vgVolts  = 0.0;
             m_currentSweep.vg2Volts = m_currentVg;
-            sendNextPoint();
-            return;
         }
+        sendNextPoint();
+        return;
     }
 
     m_running = false;

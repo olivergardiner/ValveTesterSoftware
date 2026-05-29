@@ -64,8 +64,9 @@ void TemplateStore::populateDefaults()
         DeviceTemplate t;
         t.deviceType = "Pentode"; t.testType = "Anode Characteristic";
         t.anodeStart = "0"; t.anodeStop = "500"; t.anodeStep = "5";
-        t.gridStart  = "0"; t.gridStop  = "30";  t.gridStep  = "2.5";
-        t.screenStart = "250"; t.screenStop = "250"; t.screenStep = "0";
+        t.vaFixed    = "250";
+        t.gridStart  = "0"; t.gridStop  = "30";  t.gridStep  = "2.5";  t.gridStepTransfer = "0.5";
+        t.screenStart = "100"; t.screenStop = "300"; t.screenStep = "50";
         t.iaMax = "200"; t.pMax = "25";
         m_system["EL34"] = t;
     }
@@ -74,8 +75,9 @@ void TemplateStore::populateDefaults()
         DeviceTemplate t;
         t.deviceType = "Pentode"; t.testType = "Anode Characteristic";
         t.anodeStart = "0"; t.anodeStop = "300"; t.anodeStep = "5";
-        t.gridStart  = "0"; t.gridStop  = "15";  t.gridStep  = "1.5";
-        t.screenStart = "250"; t.screenStop = "250"; t.screenStep = "0";
+        t.vaFixed    = "250";
+        t.gridStart  = "0"; t.gridStop  = "15";  t.gridStep  = "1.5";  t.gridStepTransfer = "0.25";
+        t.screenStart = "100"; t.screenFixed = "250"; t.screenStop = "250"; t.screenStep = "50";
         t.iaMax = "175"; t.pMax = "12";
         m_system["EL84"] = t;
     }
@@ -84,8 +86,9 @@ void TemplateStore::populateDefaults()
         DeviceTemplate t;
         t.deviceType = "Pentode"; t.testType = "Anode Characteristic";
         t.anodeStart = "0"; t.anodeStop = "450"; t.anodeStep = "5";
-        t.gridStart  = "0"; t.gridStop  = "30";  t.gridStep  = "2.5";
-        t.screenStart = "250"; t.screenStop = "250"; t.screenStep = "0";
+        t.vaFixed    = "250";
+        t.gridStart  = "0"; t.gridStop  = "30";  t.gridStep  = "2.5";  t.gridStepTransfer = "0.5";
+        t.screenStart = "150"; t.screenStop = "250"; t.screenStep = "50";
         t.iaMax = "150"; t.pMax = "19";
         m_system["6L6"] = t;
     }
@@ -94,8 +97,9 @@ void TemplateStore::populateDefaults()
         DeviceTemplate t;
         t.deviceType = "Pentode"; t.testType = "Anode Characteristic";
         t.anodeStart = "0"; t.anodeStop = "600"; t.anodeStep = "5";
-        t.gridStart  = "0"; t.gridStop  = "40";  t.gridStep  = "2.5";
-        t.screenStart = "300"; t.screenStop = "300"; t.screenStep = "0";
+        t.vaFixed    = "300";
+        t.gridStart  = "0"; t.gridStop  = "40";  t.gridStep  = "2.5";  t.gridStepTransfer = "0.5";
+        t.screenStart = "150"; t.screenStop = "300"; t.screenStep = "50";
         t.iaMax = "300"; t.pMax = "42";
         m_system["KT88"] = t;
     }
@@ -104,7 +108,9 @@ void TemplateStore::populateDefaults()
         DeviceTemplate t;
         t.deviceType = "Pentode"; t.testType = "Anode Characteristic";
         t.anodeStart = "0"; t.anodeStop = "300"; t.anodeStep = "5";
-        t.gridStart  = "0"; t.gridStop  = "4";   t.gridStep  = "0.5"; t.screenStop = "200"; t.screenStep = "0";
+        t.vaFixed    = "200";
+        t.gridStart  = "0"; t.gridStop  = "4";   t.gridStep  = "0.5";  t.gridStepTransfer = "0.1";
+        t.screenStart = "100"; t.screenStop = "200"; t.screenStep = "50";
         t.iaMax = "3"; t.pMax = "1";
         m_system["EF86"] = t;
     }
@@ -123,10 +129,14 @@ DeviceTemplate TemplateStore::fromJson(const QJsonObject &o)
     t.gridStart   = o["gridStart"].toString();
     t.gridStop    = o["gridStop"].toString();
     t.gridStep    = o["gridStep"].toString();
+    t.vaFixed     = o["vaFixed"].toString();
     t.screenStart = o["screenStart"].toString();
+    t.screenFixed = o["screenFixed"].toString();
     t.screenStop  = o["screenStop"].toString();
     t.screenStep  = o["screenStep"].toString();
+    t.gridStepTransfer = o["gridStepTransfer"].toString();
     t.iaMax       = o["iaMax"].toString();
+    t.iaMaxTransfer = o["iaMaxTransfer"].toString();
     t.pMax        = o["pMax"].toString();
     return t;
 }
@@ -142,10 +152,14 @@ QJsonObject TemplateStore::toJson(const DeviceTemplate &t)
         {"gridStart",   t.gridStart},
         {"gridStop",    t.gridStop},
         {"gridStep",    t.gridStep},
+        {"vaFixed",     t.vaFixed},
         {"screenStart", t.screenStart},
+        {"screenFixed", t.screenFixed},
         {"screenStop",  t.screenStop},
         {"screenStep",  t.screenStep},
+        {"gridStepTransfer", t.gridStepTransfer},
         {"iaMax",       t.iaMax},
+        {"iaMaxTransfer", t.iaMaxTransfer},
         {"pMax",        t.pMax}
     };
 }

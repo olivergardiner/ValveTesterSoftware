@@ -226,19 +226,32 @@ void MainWindow::updateSweepFields()
     const bool isPentode      = (device == "Pentode");
     const bool isDoubleTri    = (device == "Double Triode");
     const bool isAnodeChar    = (test == "Anode Characteristic");
-    const bool isScreenChar   = (test == "Screen Characteristic");
+    const bool isTransfer     = !isAnodeChar;
 
-    ui->anodeStart->setEnabled(true);
-    ui->anodeStop ->setEnabled(isAnodeChar);
-    ui->anodeStep ->setEnabled(isAnodeChar);
+    // Anode row: stop/step hidden for transfer char where Va is a fixed value
+    ui->anodeLabel->setText(isTransfer ? "Anode Voltage (fixed):" : "Anode Voltage:");
+    ui->anodeStart->setVisible(true);
+    ui->anodeStop ->setVisible(!isTransfer);
+    ui->anodeStep ->setVisible(!isTransfer);
 
-    ui->gridStart->setEnabled(true);
-    ui->gridStop ->setEnabled(!isScreenChar);
-    ui->gridStep ->setEnabled(!isScreenChar);
+    // Grid row: always fully visible; label describes role in each test type
+    ui->gridLabel->setText(isTransfer ? "Grid 1 (Vg1) sweep:" : "-ve Grid Voltage:");
+    ui->gridStart->setVisible(true);
+    ui->gridStop ->setVisible(true);
+    ui->gridStep ->setVisible(true);
 
-    ui->screenStart->setEnabled(isPentode);
-    ui->screenStop ->setEnabled(isPentode && isScreenChar);
-    ui->screenStep ->setEnabled(isPentode && isScreenChar);
+    // Screen row: hidden for non-pentodes; all 3 fields shown for Transfer (Vg2 stepped)
+    //   Anode char  → 1 field only (fixed Vg2)
+    //   Transfer char → 3 fields  (Vg2 sweep: from / to / step)
+    ui->screenLabel->setVisible(isPentode);
+    if (isPentode)
+        ui->screenLabel->setText(isTransfer ? "Screen (Vg2) sweep:" : "Screen Voltage:");
+    ui->screenStart->setVisible(isPentode);
+    ui->screenStop ->setVisible(isPentode && isTransfer);
+    ui->screenStep ->setVisible(isPentode && isTransfer);
+
+    // Re-populate field values from the active template whenever the test type changes
+    applyTemplateFields();
 
     // Checkbox labels and visibility
     if (isDoubleTri) {
@@ -268,24 +281,43 @@ void MainWindow::onEditPreferences()
 
 void MainWindow::applyTemplate(const DeviceTemplate &tmpl)
 {
+    m_activeTemplate    = tmpl;
+    m_hasActiveTemplate = true;
+
     const int dtIdx = ui->deviceType->findText(tmpl.deviceType);
     if (dtIdx >= 0) ui->deviceType->setCurrentIndex(dtIdx);
 
-    onDeviceTypeChanged();
+    onDeviceTypeChanged();  // rebuilds testType combo
     const int ttIdx = ui->testType->findText(tmpl.testType);
     if (ttIdx >= 0) ui->testType->setCurrentIndex(ttIdx);
+    // updateSweepFields is called by the above, which also calls applyTemplateFields
+}
 
-    ui->anodeStart ->setText(tmpl.anodeStart);
-    ui->anodeStop  ->setText(tmpl.anodeStop);
-    ui->anodeStep  ->setText(tmpl.anodeStep);
-    ui->gridStart  ->setText(tmpl.gridStart);
-    ui->gridStop   ->setText(tmpl.gridStop);
-    ui->gridStep   ->setText(tmpl.gridStep);
-    ui->screenStart->setText(tmpl.screenStart);
-    ui->screenStop ->setText(tmpl.screenStop);
-    ui->screenStep ->setText(tmpl.screenStep);
-    ui->iaMax      ->setText(tmpl.iaMax);
-    ui->pMax       ->setText(tmpl.pMax);
+void MainWindow::applyTemplateFields()
+{
+    if (!m_hasActiveTemplate) return;
+    const DeviceTemplate &t = m_activeTemplate;
+    const bool isTransfer = (ui->testType->currentText() == "Transfer Characteristic");
+
+    if (isTransfer) {
+        // Fixed Va from vaFixed; Vg1 inner sweep; Vg2 outer sweep from screen fields
+        ui->anodeStart ->setText(t.vaFixed.isEmpty() ? t.anodeStart : t.vaFixed);
+        ui->screenStart->setText(t.screenStart);
+        ui->screenStop ->setText(t.screenStop);
+        ui->screenStep ->setText(t.screenStep);
+    } else {
+        // Full Va sweep; fixed screen voltage from screenFixed (falls back to screenStart)
+        ui->anodeStart ->setText(t.anodeStart);
+        ui->anodeStop  ->setText(t.anodeStop);
+        ui->anodeStep  ->setText(t.anodeStep);
+        ui->screenStart->setText(t.screenFixed.isEmpty() ? t.screenStart : t.screenFixed);
+    }
+    // Grid range is shared between both test types; Transfer uses finer step if specified
+    ui->gridStart->setText(t.gridStart);
+    ui->gridStop ->setText(t.gridStop);
+    ui->gridStep ->setText(isTransfer && !t.gridStepTransfer.isEmpty() ? t.gridStepTransfer : t.gridStep);
+    ui->iaMax    ->setText(isTransfer && !t.iaMaxTransfer.isEmpty() ? t.iaMaxTransfer : t.iaMax);
+    ui->pMax     ->setText(t.pMax);
 }
 
 void MainWindow::onLoadTemplate()
@@ -428,6 +460,7 @@ void MainWindow::setupChart(const SweepParams &p)
     m_ig2Series.clear();
 
     const bool isTransfer = (p.sweepType == SweepType::Transfer);
+    m_chart->legend()->setVisible(false);
 
     m_chart->setTitle(QString("%1 — %2")
                           .arg(p.deviceName.isEmpty() ? "Unknown" : p.deviceName,
@@ -457,9 +490,8 @@ void MainWindow::setupChart(const SweepParams &p)
 
 QLineSeries *MainWindow::getOrCreateSeries(const QString &label, bool dashed)
 {
-    // Fixed two-colour palette:
-    //   Ia / triode 1  → steel blue
-    //   Ig2 / triode 2 → burnt orange
+    // Fixed two-colour palette: all Ia curves steel blue, all Ig2 curves burnt red (dashed).
+    // In Transfer mode the legend distinguishes Vg2 values; colour identifies current type.
     static const QColor kIaColor (31, 119, 180);
     static const QColor kIg2Color(214,  39,  40);
 
@@ -469,7 +501,6 @@ QLineSeries *MainWindow::getOrCreateSeries(const QString &label, bool dashed)
         series->setName(label);
         m_chart->addSeries(series);
 
-        // Override the chart's auto-assigned palette colour.
         QPen pen = series->pen();
         pen.setColor(dashed ? kIg2Color : kIaColor);
         pen.setWidth(2);

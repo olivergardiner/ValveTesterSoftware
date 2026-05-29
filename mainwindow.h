@@ -56,6 +56,7 @@ private:
     void logLine(const QString &prefix, const QString &text);
     void applyPreferences();
     void applyTemplate(const DeviceTemplate &tmpl);
+    void applyTemplateFields();
     void updateSweepFields();
     void setupChart(const SweepParams &params);
     QLineSeries *getOrCreateSeries(const QString &label, bool dashed);
@@ -72,6 +73,8 @@ private:
     QString            m_templatesPath;
     QString            m_hwVersion;
     QString            m_fwVersion;
+    DeviceTemplate     m_activeTemplate;
+    bool               m_hasActiveTemplate = false;
     // Chart state
     QChart            *m_chart = nullptr;
     SweepParams        m_sweepParams;
