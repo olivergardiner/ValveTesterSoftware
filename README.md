@@ -4,7 +4,7 @@ A visual tool for PC, created with QT, for measuring thermionic valves using the
 
 The Valve Wizard's Valve Analyser is an Arduino-based valve tester which he explains here: https://valvewizard.co.uk/analyser_mk2.html
 
-This application is a complement to the Firmware project and enables the PC to control the Valve Analyser such that it can run tests and display the results graphically.
+This application is a complement to the Firmware project (https://github.com/olivergardiner/ValveTesterFirmware) and enables the PC to control the Valve Analyser such that it can run tests and display the results graphically.
 
 ## Build Instructions
 
