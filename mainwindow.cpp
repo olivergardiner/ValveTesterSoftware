@@ -229,13 +229,13 @@ void MainWindow::updateSweepFields()
     const bool isTransfer     = !isAnodeChar;
 
     // Anode row: stop/step hidden for transfer char where Va is a fixed value
-    ui->anodeLabel->setText(isTransfer ? "Anode Voltage (fixed):" : "Anode Voltage:");
+    ui->anodeLabel->setText(isTransfer ? "Anode Voltage" : "Anode Voltage:");
     ui->anodeStart->setVisible(true);
     ui->anodeStop ->setVisible(!isTransfer);
     ui->anodeStep ->setVisible(!isTransfer);
 
     // Grid row: always fully visible; label describes role in each test type
-    ui->gridLabel->setText(isTransfer ? "Grid 1 (Vg1) sweep:" : "-ve Grid Voltage:");
+    ui->gridLabel->setText(isTransfer ? "Grid 1 (Vg1)" : "-ve Grid Voltage:");
     ui->gridStart->setVisible(true);
     ui->gridStop ->setVisible(true);
     ui->gridStep ->setVisible(true);
@@ -245,7 +245,7 @@ void MainWindow::updateSweepFields()
     //   Transfer char → 3 fields  (Vg2 sweep: from / to / step)
     ui->screenLabel->setVisible(isPentode);
     if (isPentode)
-        ui->screenLabel->setText(isTransfer ? "Screen (Vg2) sweep:" : "Screen Voltage:");
+        ui->screenLabel->setText(isTransfer ? "Screen (Vg2)" : "Screen Voltage:");
     ui->screenStart->setVisible(isPentode);
     ui->screenStop ->setVisible(isPentode && isTransfer);
     ui->screenStep ->setVisible(isPentode && isTransfer);
